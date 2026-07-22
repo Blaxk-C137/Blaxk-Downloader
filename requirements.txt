@@ -1,0 +1,5 @@
+yt-dlp
+rich
+mutagen
+beautifulsoup4
+requests

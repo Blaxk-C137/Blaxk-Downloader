@@ -1,0 +1,17 @@
+[project]
+name = "youtube_media_grabber"
+version = "0.1.0"
+description = "Console-based YouTube downloader with metadata search fallback for Spotify/Audiomack links."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "yt-dlp",
+    "rich",
+    "mutagen",
+    "beautifulsoup4",
+    "requests",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
