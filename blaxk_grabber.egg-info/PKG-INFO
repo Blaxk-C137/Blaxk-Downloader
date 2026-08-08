@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: blaxk-grabber
+Version: 2.0.0
+Summary: BlaXk Grabber — YouTube media grabber with Spotify/Audiomack metadata lookup
+Requires-Python: >=3.11
+Requires-Dist: yt-dlp
+Requires-Dist: mutagen
+Requires-Dist: rich
+Requires-Dist: requests
+Requires-Dist: beautifulsoup4
+Requires-Dist: Pillow
+Requires-Dist: customtkinter

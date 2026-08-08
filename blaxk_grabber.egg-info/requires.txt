@@ -1,0 +1,7 @@
+yt-dlp
+mutagen
+rich
+requests
+beautifulsoup4
+Pillow
+customtkinter

@@ -1,0 +1,2 @@
+[console_scripts]
+blaxk = youtube_media_grabber.gui:main
