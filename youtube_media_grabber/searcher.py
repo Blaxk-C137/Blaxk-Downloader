@@ -1,12 +1,22 @@
 import yt_dlp
 
 
+class _SilentLogger:
+    def debug(self, msg): pass
+    def info(self, msg): pass
+    def warning(self, msg): pass
+    def error(self, msg): pass
+
+
 def search_youtube(query: str, max_results: int = 1) -> dict:
     search_query = f"ytsearch{max_results}:{query}"
     ydl_opts = {
         "quiet": True,
+        "no_warnings": True,
+        "noprogress": True,
         "skip_download": True,
         "extract_flat": True,
+        "logger": _SilentLogger(),
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(search_query, download=False)
@@ -31,9 +41,12 @@ def search_youtube(query: str, max_results: int = 1) -> dict:
 def extract_playlist_urls(url: str) -> list[dict]:
     ydl_opts = {
         "quiet": True,
+        "no_warnings": True,
+        "noprogress": True,
         "skip_download": True,
         "extract_flat": True,
         "ignoreerrors": True,
+        "logger": _SilentLogger(),
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)

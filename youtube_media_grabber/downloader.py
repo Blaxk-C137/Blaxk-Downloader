@@ -52,11 +52,13 @@ def get_expected_output_path(
     )
     ydl_opts = {
         "quiet": True,
+        "no_warnings": True,
         "outtmpl": outtmpl,
         "noplaylist": True,
         "ffmpeg_location": ffmpeg_path,
         "prefer_ffmpeg": True,
         "windowsfilenames": True,
+        "logger": _SilentLogger(),
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
@@ -65,6 +67,42 @@ def get_expected_output_path(
             stem = os.path.splitext(filename)[0]
             filename = f"{stem}.mp3"
         return Path(filename)
+
+
+def check_already_exists(
+    url: str,
+    format_choice: str,
+    base_output_dir: str | None = None,
+    ffmpeg_path: str | None = None,
+) -> Path | None:
+    """
+    Check if the file already exists on disk.
+    Returns the Path if it exists, None if it doesn't.
+    """
+    try:
+        expected = get_expected_output_path(url, format_choice, base_output_dir, ffmpeg_path)
+        if expected.exists() and expected.stat().st_size > 0:
+            return expected
+    except Exception:
+        pass
+    return None
+
+
+def scan_existing_files(base_output_dir: str | None = None) -> set[str]:
+    """
+    Scan the output directory and return a set of lowercase
+    filenames (stems without extension) that already exist.
+    Used for fast duplicate checking without hitting yt-dlp.
+    """
+    output_dir = resolve_base_output_dir(base_output_dir)
+    existing = set()
+    for subdir in ["audio", "video"]:
+        folder = output_dir / subdir
+        if folder.exists():
+            for f in folder.iterdir():
+                if f.is_file() and f.stat().st_size > 0:
+                    existing.add(f.stem.lower().strip())
+    return existing
 
 
 def embed_mp3_metadata(filepath: str, metadata: Metadata | dict) -> None:
@@ -137,6 +175,8 @@ def download_single(
 
     ydl_opts = {
         "quiet": True,
+        "no_warnings": True,
+        "noprogress": True,
         "progress_hooks": [hook],
         "outtmpl": outtmpl,
         "noplaylist": True,
@@ -144,7 +184,9 @@ def download_single(
         "writethumbnail": format_choice == "audio",
         "prefer_ffmpeg": True,
         "windowsfilenames": True,
+        "nooverwrites": True,
         "postprocessor_args": ["-id3v2_version", "3", "-write_id3v1", "1"],
+        "logger": _SilentLogger(),
     }
 
     if format_choice == "audio":
@@ -171,7 +213,15 @@ def download_single(
     return final_filepath
 
 
-# Legacy wrapper for compatibility
+class _SilentLogger:
+    """Swallows all yt-dlp log output so nothing hits the terminal."""
+    def debug(self, msg): pass
+    def info(self, msg): pass
+    def warning(self, msg): pass
+    def error(self, msg): pass
+
+
+# Legacy wrapper
 def download_youtube(
     url: str,
     format_choice: str,
