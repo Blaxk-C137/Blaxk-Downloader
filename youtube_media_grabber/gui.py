@@ -1,5 +1,6 @@
 import threading
 import time
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from tkinter import filedialog, messagebox
@@ -12,6 +13,7 @@ from .downloader import (
     download_single, find_ffmpeg, resolve_base_output_dir,
     scan_existing_files, check_already_exists,
 )
+from . import launcher
 
 # ──────────────────────────────────────────────────────────────
 # Theme
@@ -393,59 +395,59 @@ class BlaXkGrabber(ctk.CTk):
 
         threading.Thread(target=self._resolve_and_download, args=(source,), daemon=True).start()
 
-def _resolve_and_download(self, source: str) -> None:
-    try:
-        metadata = extract_metadata(source)
-        fmt = self.format_var.get()
-        out_dir = self.output_entry.get().strip()
-        max_workers = self.concurrent_var.get()
+    def _resolve_and_download(self, source: str) -> None:
+        try:
+            metadata = extract_metadata(source)
+            fmt = self.format_var.get()
+            out_dir = self.output_entry.get().strip()
+            max_workers = self.concurrent_var.get()
 
-        if is_youtube_url(source):
-            if "list=" in source.lower():
-                self.after(0, self._log, "🔍 Extracting playlist...")
-                self.after(0, self._set_status, "Extracting playlist...")
-                entries = extract_playlist_urls(source)
-                if not entries:
-                    raise ValueError("Could not extract any videos from this playlist.")
-                self.after(0, self._log, f"📋 Found {len(entries)} videos in playlist")
-                self._download_batch(entries, fmt, out_dir, metadata, max_workers)
-                return
+            if is_youtube_url(source):
+                if "list=" in source.lower():
+                    self.after(0, self._log, "🔍 Extracting playlist...")
+                    self.after(0, self._set_status, "Extracting playlist...")
+                    entries = extract_playlist_urls(source)
+                    if not entries:
+                        raise ValueError("Could not extract any videos from this playlist.")
+                    self.after(0, self._log, f"📋 Found {len(entries)} videos in playlist")
+                    self._download_batch(entries, fmt, out_dir, metadata, max_workers)
+                    return
+                else:
+                    # Fetch the actual title from yt-dlp instead of showing the raw URL
+                    self.after(0, self._log, "🔍 Fetching video info...")
+                    self.after(0, self._set_status, "Fetching video info...")
+                    from .searcher import _SilentLogger
+                    import yt_dlp
+                    ydl_opts = {
+                        "quiet": True,
+                        "no_warnings": True,
+                        "skip_download": True,
+                        "noplaylist": True,
+                        "logger": _SilentLogger(),
+                    }
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info = ydl.extract_info(source, download=False)
+                    title = info.get("title", source) if info else source
+                    self.after(0, self._log, f"✅ Found: {title}")
+                    entries = [{"title": title, "link": source}]
             else:
-                # Fetch the actual title from yt-dlp instead of showing the raw URL
-                self.after(0, self._log, "🔍 Fetching video info...")
-                self.after(0, self._set_status, "Fetching video info...")
-                from .searcher import _SilentLogger
-                import yt_dlp
-                ydl_opts = {
-                    "quiet": True,
-                    "no_warnings": True,
-                    "skip_download": True,
-                    "noplaylist": True,
-                    "logger": _SilentLogger(),
-                }
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(source, download=False)
-                title = info.get("title", source) if info else source
-                self.after(0, self._log, f"✅ Found: {title}")
-                entries = [{"title": title, "link": source}]
-        else:
-            query = build_search_query(metadata)
-            if not query:
-                raise ValueError("Unable to build a search query from the provided input.")
-            self.after(0, self._log, f"🔍 Searching: {query}")
-            self.after(0, self._set_status, "Searching YouTube...")
-            video = search_youtube(query)
-            self.after(0, self._log, f"✅ Found: {video['title']}")
-            entries = [video]
+                query = build_search_query(metadata)
+                if not query:
+                    raise ValueError("Unable to build a search query from the provided input.")
+                self.after(0, self._log, f"🔍 Searching: {query}")
+                self.after(0, self._set_status, "Searching YouTube...")
+                video = search_youtube(query)
+                self.after(0, self._log, f"✅ Found: {video['title']}")
+                entries = [video]
 
-        self._download_batch(entries, fmt, out_dir, metadata, max_workers)
+            self._download_batch(entries, fmt, out_dir, metadata, max_workers)
 
-    except Exception as exc:
-        self.after(0, self._log, f"❌ Error: {exc}")
-        self.after(0, self._set_status, "Error")
-        self.after(0, messagebox.showerror, "BlaXk Grabber", str(exc))
-    finally:
-        self.after(0, self._finish_download)
+        except Exception as exc:
+            self.after(0, self._log, f"❌ Error: {exc}")
+            self.after(0, self._set_status, "Error")
+            self.after(0, messagebox.showerror, "BlaXk Grabber", str(exc))
+        finally:
+            self.after(0, self._finish_download)
 
     def _download_batch(
         self,
@@ -615,5 +617,69 @@ def _resolve_and_download(self, source: str) -> None:
 
 
 def main() -> None:
+    force_setup = "--setup" in sys.argv
+    if force_setup or launcher.get_launch_word() is None:
+        _run_first_run_setup(force=force_setup)
     app = BlaXkGrabber()
     app.mainloop()
+
+
+def _run_first_run_setup(force: bool = False) -> None:
+    """Ask the user to pick their launch word. Skippable — never blocks the app."""
+    from tkinter import messagebox as _mb
+
+    while True:
+        dialog = ctk.CTkInputDialog(
+            text=(
+                "Welcome to BlaXk Grabber! 🎉\n\n"
+                "Pick a launch word — the command you'll type in any terminal\n"
+                "to start BlaXk Grabber (e.g. 'grab', 'media').\n\n"
+                "Lowercase letters, numbers and dashes only."
+            ),
+            title="BlaXk Grabber — Setup",
+        )
+        word = dialog.get_input()
+        if word is None or not word.strip():  # closed or left blank → skip
+            if not force:
+                launcher.mark_skipped()
+            return
+
+        word = word.strip().lower()
+        error = launcher.validate_launch_word(word)
+        if error:
+            retry = _mb.askretrycancel("BlaXk Grabber", f"{error}\n\nTry another word?")
+            if not retry:
+                if not force:
+                    launcher.mark_skipped()
+                return
+            continue
+
+        try:
+            wrapper = launcher.install_launch_word(word)
+        except launcher.LauncherInstallError as e:
+            retry = _mb.askretrycancel("BlaXk Grabber", f"{e}\n\nTry another word?")
+            if not retry:
+                if not force:
+                    launcher.mark_skipped()
+                return
+            continue
+        except OSError as e:
+            _mb.showerror(
+                "BlaXk Grabber",
+                f"Could not install launcher: {e}\n\n"
+                "You can still run the app with 'python main.py'.",
+            )
+            return
+
+        message = (
+            f"✅ Installed! Type '{word}' in any terminal to launch BlaXk Grabber.\n\n"
+            f"({wrapper})"
+        )
+        if not launcher.bin_dir_on_path():
+            message += (
+                "\n\n⚠ Note: "
+                f"{wrapper.parent} is not on your PATH yet. "
+                "Add it to your shell profile, then open a new terminal."
+            )
+        _mb.showinfo("BlaXk Grabber", message)
+        return

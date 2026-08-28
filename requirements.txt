@@ -1,5 +1,7 @@
 yt-dlp
-rich
 mutagen
-beautifulsoup4
+rich
 requests
+beautifulsoup4
+Pillow
+customtkinter

@@ -1,4 +1,9 @@
-```markdown
+ 
+ 
+ 
+ 
+ 
+ ```markdown
 <div align="center">
 
 # 🔴 BlaXk Grabber
@@ -153,6 +158,31 @@ Or alternatively:
 ```bash
 python -m youtube_media_grabber
 ```
+
+### 🪄 First run — pick your own launch word
+
+The first time you run BlaXk Grabber, it asks you to pick a **launch word** —
+your own personal command for starting the app from any terminal:
+
+```
+Welcome to BlaXk Grabber! 🎉
+
+Pick a launch word — the command you'll type in any terminal
+to start BlaXk Grabber (e.g. 'grab', 'media').
+```
+
+Type something like `grab` or `media`, confirm, and from then on that word
+launches the app from anywhere (a wrapper is installed in `~/.local/bin`).
+
+- **Skip it** (close the dialog or leave it blank) → the app still works via
+  `blaxk` or `python -m youtube_media_grabber`; you won't be asked again.
+- **Change your word later** → run `python main.py --setup` (or
+  `blaxk --setup`) to pick a new one; the old wrapper is removed automatically.
+- Rules: 2–20 characters, lowercase letters, numbers and dashes; system
+  commands like `ls`, `python` or `git` are rejected for safety.
+
+Your choice is stored in `~/.config/blaxk-grabber/launch_word`. Delete that
+file to get the first-run question again.
 
 ### What you can paste
 

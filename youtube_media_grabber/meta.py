@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from urllib.parse import urlparse
 import json
 import re
@@ -174,6 +174,10 @@ def parse_page_metadata(url: str) -> Metadata:
 
 
 def enrich_from_ytdlp(metadata: Metadata, yt_info: dict) -> Metadata:
+    # Work on a copy so a shared/base Metadata object is never mutated. Without
+    # this, the first track in a batch would populate the shared object and every
+    # later track would keep the first track's title/artist/album/etc.
+    metadata = replace(metadata)
     if not metadata.title:
         metadata.title = normalize_text(yt_info.get("title", ""))
     if not metadata.artist:
