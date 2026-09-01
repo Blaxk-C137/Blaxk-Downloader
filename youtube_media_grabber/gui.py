@@ -3,7 +3,7 @@ import time
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, TclError
 
 import customtkinter as ctk
 
@@ -46,6 +46,8 @@ class GlassCard(ctk.CTkFrame):
 class DownloadRow(ctk.CTkFrame):
     def __init__(self, master, title: str, index: int, **kwargs):
         super().__init__(master, fg_color="transparent", height=48, **kwargs)
+        # Dead/private playlist entries can carry title=None
+        title = title or "Unknown"
         self.grid_columnconfigure(1, weight=1)
 
         self.index_label = ctk.CTkLabel(
@@ -83,6 +85,15 @@ class DownloadRow(ctk.CTkFrame):
             self.progress_bar.configure(progress_color=color)
 
 
+class _NullRow:
+    """Stand-in download row used when the UI row can't be created
+    (e.g. the app is closing). Keeps the download logic running without
+    a real widget."""
+
+    def update_progress(self, *args, **kwargs) -> None:
+        pass
+
+
 class BlaXkGrabber(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
@@ -99,6 +110,11 @@ class BlaXkGrabber(ctk.CTk):
         self.ffmpeg_path = find_ffmpeg()
         self.download_rows: list[DownloadRow] = []
         self.is_downloading = False
+        self._destroyed = False
+
+        # Route the window's X button through our destroy() so pending
+        # after-timers get cancelled even on a WM-initiated close.
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self._build_ui()
 
@@ -282,6 +298,74 @@ class BlaXkGrabber(ctk.CTk):
             self._log("⚠ ffmpeg not found — some conversions may fail.")
 
     # ──────────────────────────────────────────────────────────
+    # Shutdown safety
+    # ──────────────────────────────────────────────────────────
+
+    def _on_close(self) -> None:
+        """WM_DELETE_WINDOW handler — make the X button use our destroy()."""
+        self.destroy()
+
+    def destroy(self) -> None:
+        """
+        Cancel every pending `after` timer before Tk deletes their commands.
+
+        customtkinter runs internal after-loops (AppearanceModeTracker.update,
+        ScalingTracker.check_dpi_scaling, ...) that the library never cancels.
+        If Tcl fires one of those timers after the commands were deleted, it
+        dies with:
+            bgerror failed to handle background error.
+            Original error: invalid command name "<id>update"
+            Error in bgerror: cannot invoke "tk" command:
+            application has been destroyed
+        Cancelling the timers here prevents that whole error family.
+        """
+        if getattr(self, "_destroyed", False):
+            return
+        self._destroyed = True
+
+        try:
+            for after_id in self.tk.splitlist(self.tk.call("after", "info")):
+                self.tk.call("after", "cancel", after_id)
+        except TclError:
+            pass
+
+        # Stop the tracker from rescheduling on this (soon dead) app.
+        try:
+            from customtkinter.windows.widgets.appearance_mode.appearance_mode_tracker import (
+                AppearanceModeTracker,
+            )
+            AppearanceModeTracker.app_list = [
+                a for a in AppearanceModeTracker.app_list if a is not self
+            ]
+        except Exception:
+            pass
+
+        super().destroy()
+
+    def _schedule(self, func, *args) -> None:
+        """Thread-safe UI scheduling from download worker threads.
+
+        Silently drops the call once the app is closing — without this,
+        workers calling after() on a destroyed app raise
+        'RuntimeError: main thread is not in main loop'.
+        """
+        if self._destroyed:
+            return
+        try:
+            self.after(0, func, *args)
+        except (RuntimeError, TclError):
+            pass
+
+    def _show_error(self, title: str, message: str) -> None:
+        """Error dialog that tolerates the app disappearing underneath it."""
+        if self._destroyed:
+            return
+        try:
+            messagebox.showerror(title, message)
+        except TclError:
+            pass
+
+    # ──────────────────────────────────────────────────────────
     # Helpers
     # ──────────────────────────────────────────────────────────
 
@@ -328,15 +412,19 @@ class BlaXkGrabber(ctk.CTk):
         self.download_rows.append(row)
         return row
 
-    def _safe_add_row(self, title: str, index: int) -> DownloadRow:
+    def _safe_add_row(self, title: str, index: int) -> DownloadRow | None:
         import queue as q
         result_q = q.Queue()
 
         def create():
             result_q.put(self._add_queue_row(title, index))
 
-        self.after(0, create)
-        return result_q.get()
+        self._schedule(create)
+        try:
+            # Don't block the worker forever if the app closes mid-batch
+            return result_q.get(timeout=10)
+        except q.Empty:
+            return None
 
     # ──────────────────────────────────────────────────────────
     # Duplicate detection
@@ -404,18 +492,18 @@ class BlaXkGrabber(ctk.CTk):
 
             if is_youtube_url(source):
                 if "list=" in source.lower():
-                    self.after(0, self._log, "🔍 Extracting playlist...")
-                    self.after(0, self._set_status, "Extracting playlist...")
+                    self._schedule(self._log, "🔍 Extracting playlist...")
+                    self._schedule(self._set_status, "Extracting playlist...")
                     entries = extract_playlist_urls(source)
                     if not entries:
                         raise ValueError("Could not extract any videos from this playlist.")
-                    self.after(0, self._log, f"📋 Found {len(entries)} videos in playlist")
+                    self._schedule(self._log, f"📋 Found {len(entries)} videos in playlist")
                     self._download_batch(entries, fmt, out_dir, metadata, max_workers)
                     return
                 else:
                     # Fetch the actual title from yt-dlp instead of showing the raw URL
-                    self.after(0, self._log, "🔍 Fetching video info...")
-                    self.after(0, self._set_status, "Fetching video info...")
+                    self._schedule(self._log, "🔍 Fetching video info...")
+                    self._schedule(self._set_status, "Fetching video info...")
                     from .searcher import _SilentLogger
                     import yt_dlp
                     ydl_opts = {
@@ -427,27 +515,27 @@ class BlaXkGrabber(ctk.CTk):
                     }
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         info = ydl.extract_info(source, download=False)
-                    title = info.get("title", source) if info else source
-                    self.after(0, self._log, f"✅ Found: {title}")
+                    title = info.get("title") or source if info else source
+                    self._schedule(self._log, f"✅ Found: {title}")
                     entries = [{"title": title, "link": source}]
             else:
                 query = build_search_query(metadata)
                 if not query:
                     raise ValueError("Unable to build a search query from the provided input.")
-                self.after(0, self._log, f"🔍 Searching: {query}")
-                self.after(0, self._set_status, "Searching YouTube...")
+                self._schedule(self._log, f"🔍 Searching: {query}")
+                self._schedule(self._set_status, "Searching YouTube...")
                 video = search_youtube(query)
-                self.after(0, self._log, f"✅ Found: {video['title']}")
+                self._schedule(self._log, f"✅ Found: {video['title']}")
                 entries = [video]
 
             self._download_batch(entries, fmt, out_dir, metadata, max_workers)
 
         except Exception as exc:
-            self.after(0, self._log, f"❌ Error: {exc}")
-            self.after(0, self._set_status, "Error")
-            self.after(0, messagebox.showerror, "BlaXk Grabber", str(exc))
+            self._schedule(self._log, f"❌ Error: {exc}")
+            self._schedule(self._set_status, "Error")
+            self._schedule(self._show_error, "BlaXk Grabber", str(exc))
         finally:
-            self.after(0, self._finish_download)
+            self._schedule(self._finish_download)
 
     def _download_batch(
         self,
@@ -464,14 +552,14 @@ class BlaXkGrabber(ctk.CTk):
         for stem in existing_files:
             normalized_existing.add(self._normalize_title(stem))
 
-        self.after(0, self._log, f"📂 Found {len(existing_files)} existing files in output folder")
+        self._schedule(self._log, f"📂 Found {len(existing_files)} existing files in output folder")
 
         # Separate entries into skip vs download
         to_download: list[dict] = []
         to_skip: list[dict] = []
 
         for entry in entries:
-            title = entry.get("title", "")
+            title = entry.get("title") or ""
             if self._is_duplicate(title, normalized_existing):
                 to_skip.append(entry)
             else:
@@ -481,22 +569,24 @@ class BlaXkGrabber(ctk.CTk):
         skipped = len(to_skip)
 
         if skipped > 0:
-            self.after(0, self._log, f"⏭ Skipping {skipped} already downloaded files")
+            self._schedule(self._log, f"⏭ Skipping {skipped} already downloaded files")
 
         # Create rows for everything so user sees the full picture
         rows_all: list[tuple[dict, DownloadRow, bool]] = []
         idx = 1
         for entry in entries:
-            row = self._safe_add_row(entry.get("title", "Unknown"), idx)
+            row = self._safe_add_row(entry.get("title") or "Unknown", idx)
+            if row is None:
+                row = _NullRow()
             is_skip = entry in to_skip
             if is_skip:
-                self.after(0, row.update_progress, 1.0, "Exists ✓", BLUE)
+                self._schedule(row.update_progress, 1.0, "Exists ✓", BLUE)
             rows_all.append((entry, row, is_skip))
             idx += 1
 
         if not to_download:
-            self.after(0, self._log, "🎉 All files already exist — nothing to download!")
-            self.after(0, self._set_status, f"All {total_all} files already exist")
+            self._schedule(self._log, "🎉 All files already exist — nothing to download!")
+            self._schedule(self._set_status, f"All {total_all} files already exist")
             return
 
         # Build the downloadable subset
@@ -508,13 +598,13 @@ class BlaXkGrabber(ctk.CTk):
         completed = 0
         failed_entries: list[tuple[int, dict, DownloadRow]] = []
 
-        self.after(0, self._set_status, f"Downloading 0/{total_to_dl} (skipped {skipped})...")
+        self._schedule(self._set_status, f"Downloading 0/{total_to_dl} (skipped {skipped})...")
 
         def do_download(index: int, entry: dict, row: DownloadRow) -> str:
             url = entry["link"]
-            title = entry.get("title", "Unknown")
-            self.after(0, row.update_progress, 0.0, "Downloading...", RED)
-            self.after(0, self._log, f"⬇ Starting: {title}")
+            title = entry.get("title") or "Unknown"
+            self._schedule(row.update_progress, 0.0, "Downloading...", RED)
+            self._schedule(self._log, f"⬇ Starting: {title}")
 
             def progress_hook(d: dict):
                 status = d.get("status")
@@ -523,9 +613,9 @@ class BlaXkGrabber(ctk.CTk):
                     downloaded = d.get("downloaded_bytes") or 0
                     if total_bytes > 0:
                         fraction = downloaded / total_bytes
-                        self.after(0, row.update_progress, fraction, f"{fraction * 100:.0f}%", RED)
+                        self._schedule(row.update_progress, fraction, f"{fraction * 100:.0f}%", RED)
                 elif status == "finished":
-                    self.after(0, row.update_progress, 1.0, "Finalizing...", YELLOW)
+                    self._schedule(row.update_progress, 1.0, "Finalizing...", YELLOW)
 
             try:
                 download_single(
@@ -533,12 +623,12 @@ class BlaXkGrabber(ctk.CTk):
                     ffmpeg_path=self.ffmpeg_path, metadata=base_metadata,
                     progress_callback=progress_hook,
                 )
-                self.after(0, row.update_progress, 1.0, "Done ✓", GREEN)
-                self.after(0, self._log, f"✅ Finished: {title}")
+                self._schedule(row.update_progress, 1.0, "Done ✓", GREEN)
+                self._schedule(self._log, f"✅ Finished: {title}")
                 return "ok"
             except Exception as e:
-                self.after(0, row.update_progress, 0.0, "Failed ✗", RED)
-                self.after(0, self._log, f"❌ Failed: {title} — {e}")
+                self._schedule(row.update_progress, 0.0, "Failed ✗", RED)
+                self._schedule(self._log, f"❌ Failed: {title} — {e}")
                 return "fail"
 
         # ── First pass ──
@@ -555,8 +645,8 @@ class BlaXkGrabber(ctk.CTk):
                     completed += 1
                 else:
                     failed_entries.append((i, entry, row))
-                self.after(
-                    0, self._set_status,
+                self._schedule(
+                    self._set_status,
                     f"Downloaded {completed}/{total_to_dl} ({len(failed_entries)} failed, {skipped} skipped)"
                     if failed_entries
                     else f"Downloaded {completed}/{total_to_dl} (skipped {skipped})",
@@ -567,8 +657,8 @@ class BlaXkGrabber(ctk.CTk):
             retry_round = 0
             while failed_entries and retry_round < MAX_RETRIES:
                 retry_round += 1
-                self.after(0, self._log, f"🔄 Retry round {retry_round}/{MAX_RETRIES} — {len(failed_entries)} items")
-                self.after(0, self._set_status, f"Retrying {len(failed_entries)} failed downloads (round {retry_round})...")
+                self._schedule(self._log, f"🔄 Retry round {retry_round}/{MAX_RETRIES} — {len(failed_entries)} items")
+                self._schedule(self._set_status, f"Retrying {len(failed_entries)} failed downloads (round {retry_round})...")
 
                 time.sleep(2)
 
@@ -577,7 +667,7 @@ class BlaXkGrabber(ctk.CTk):
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
                     retry_futures = {}
                     for i, entry, row in failed_entries:
-                        self.after(0, row.update_progress, 0.0, f"Retry {retry_round}...", YELLOW)
+                        self._schedule(row.update_progress, 0.0, f"Retry {retry_round}...", YELLOW)
                         future = executor.submit(do_download, i, entry, row)
                         retry_futures[future] = (i, entry, row)
 
@@ -591,8 +681,8 @@ class BlaXkGrabber(ctk.CTk):
 
                 failed_entries = still_failed
 
-                self.after(
-                    0, self._set_status,
+                self._schedule(
+                    self._set_status,
                     f"Downloaded {completed}/{total_to_dl} ({len(failed_entries)} still failing, {skipped} skipped)"
                     if failed_entries
                     else f"Downloaded {completed}/{total_to_dl} (skipped {skipped})",
@@ -602,25 +692,31 @@ class BlaXkGrabber(ctk.CTk):
         final_failed = len(failed_entries)
         if final_failed == 0:
             summary = f"🎉 Done! {completed} downloaded, {skipped} already existed"
-            self.after(0, self._log, summary)
+            self._schedule(self._log, summary)
         else:
             summary = f"⚠ Done: {completed} downloaded, {skipped} skipped, {final_failed} failed"
-            self.after(0, self._log, summary)
+            self._schedule(self._log, summary)
             for _, entry, _ in failed_entries:
-                self.after(0, self._log, f"   ✗ {entry.get('title', entry.get('link', '?'))}")
+                self._schedule(self._log, f"   ✗ {entry.get('title') or entry.get('link', '?')}")
 
-        self.after(0, self._set_status, summary)
+        self._schedule(self._set_status, summary)
 
     def _finish_download(self) -> None:
+        if self._destroyed:
+            return
         self.is_downloading = False
         self.download_btn.configure(state="normal", text="⬇  GRAB IT")
 
 
 def main() -> None:
     force_setup = "--setup" in sys.argv
-    if force_setup or launcher.get_launch_word() is None:
-        _run_first_run_setup(force=force_setup)
+    # Create the app FIRST so the first-run dialog attaches to it as a
+    # Toplevel. Creating the dialog before any root spawns a second, hidden
+    # Tk instance that customtkinter's trackers keep referencing after the
+    # main window closes ("invalid command name ...update" bgerror).
     app = BlaXkGrabber()
+    if force_setup or launcher.get_launch_word() is None:
+        app.after(200, lambda: _run_first_run_setup(force=force_setup))
     app.mainloop()
 
 

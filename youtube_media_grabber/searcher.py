@@ -30,7 +30,7 @@ def search_youtube(query: str, max_results: int = 1) -> dict:
     if not link and first.get("id"):
         link = f"https://www.youtube.com/watch?v={first.get('id')}"
     return {
-        "title": first.get("title", ""),
+        "title": first.get("title") or "",
         "link": link or "",
         "duration": first.get("duration", ""),
         "channel": first.get("uploader", ""),
@@ -64,7 +64,9 @@ def extract_playlist_urls(url: str) -> list[dict]:
             link = f"https://www.youtube.com/watch?v={entry['id']}"
         if link:
             results.append({
-                "title": entry.get("title", "Unknown"),
+                # Dead/private entries report title=None — fall back so the
+                # GUI never sees a None title (crashes DownloadRow).
+                "title": entry.get("title") or "Unknown",
                 "link": link,
                 "duration": entry.get("duration", ""),
             })
