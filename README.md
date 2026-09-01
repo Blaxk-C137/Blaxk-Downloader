@@ -21,16 +21,6 @@
 
 ---
 
-## 📸 Preview
-
-> _Screenshot / demo GIF goes here_
-
-<div align="center">
-<img src="assets/preview.png" alt="BlaXk Grabber UI" width="720">
-</div>
-
----
-
 ## ✨ Features
 
 | | Feature | Description |
