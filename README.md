@@ -1,9 +1,3 @@
- 
- 
- 
- 
- 
- ```markdown
 <div align="center">
 
 # 🔴 BlaXk Grabber
@@ -11,325 +5,211 @@
 ### YouTube Media Grabber with Spotify & Audiomack Metadata Lookup
 
 [![Python](https://img.shields.io/badge/Python-3.11+-red?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![License](https://img.shields.io/badge/License-MIT-black?style=for-the-badge)](LICENSE)
 [![yt-dlp](https://img.shields.io/badge/Powered_by-yt--dlp-red?style=for-the-badge)](https://github.com/yt-dlp/yt-dlp)
+[![License](https://img.shields.io/badge/License-MIT-black?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux_|_Windows_|_macOS-black?style=for-the-badge)]()
 
 <br>
 
-<img src="https://img.shields.io/badge/⬇_GRAB_IT-ff2d3b?style=for-the-badge&logoColor=white" height="40">
+> **Paste a link. Pick a format. Hit GRAB IT.**
+>
+> YouTube • Spotify • Audiomack → MP3 / MP4
 
-<br><br>
-
-**Paste a link. Pick a format. Hit GRAB IT.**
-
-YouTube • Spotify • Audiomack → MP3 / MP4
-
----
+<br>
 
 </div>
 
+---
+
+## 📸 Preview
+
+> _Screenshot / demo GIF goes here_
+
+<div align="center">
+<img src="assets/preview.png" alt="BlaXk Grabber UI" width="720">
+</div>
+
+---
+
 ## ✨ Features
 
-| Feature | Description |
-|---|---|
-| 🎵 **Audio & Video** | Download as MP3 (192kbps) or MP4 (best quality) |
-| 📋 **Playlist Support** | Grab entire YouTube playlists in one click |
-| ⚡ **Concurrent Downloads** | Download 1–8 files simultaneously (configurable slider) |
-| 🔍 **Smart Search** | Type a song name — BlaXk finds it on YouTube automatically |
-| 🎧 **Spotify → YouTube** | Paste a Spotify link — metadata is extracted and the song is found on YouTube |
-| 🔊 **Audiomack → YouTube** | Same for Audiomack links |
-| 🏷️ **Full Metadata** | ID3 tags: title, artist, album, genre, date, album art (via MusicBrainz + yt-dlp) |
-| 📂 **Duplicate Detection** | Scans your folder before downloading — skips files that already exist |
-| 🔄 **Auto-Retry** | Failed downloads are automatically retried up to 2 times after the batch finishes |
-| 🖥️ **Glassmorphic GUI** | Dark red/black themed interface with per-file progress bars |
-| 🔇 **Silent Terminal** | Zero console output — everything stays in the GUI |
+| | Feature | Description |
+|---|---|---|
+| 🎵 | **Audio & Video** | Download as MP3 (192 kbps) or MP4 (best available quality) |
+| 📋 | **Playlist Support** | Grab entire YouTube playlists in one go |
+| ⚡ | **Concurrent Downloads** | 1–8 simultaneous downloads via a configurable slider |
+| 🔍 | **Smart Search** | Type a track name — BlaXk finds it on YouTube automatically |
+| 🎧 | **Spotify → YouTube** | Paste a Spotify link; metadata is extracted and matched on YouTube |
+| 🔊 | **Audiomack → YouTube** | Same seamless flow for Audiomack links |
+| 🏷️ | **Full ID3 Metadata** | Title, artist, album, genre, date, and album art via MusicBrainz + yt-dlp |
+| 📂 | **Duplicate Detection** | Scans your output folder before each download — skips files that already exist |
+| 🔄 | **Auto-Retry** | Failed downloads are automatically retried up to 2× after the batch finishes |
+| 🖥️ | **Glassmorphic GUI** | Dark red/black themed interface with per-file progress bars |
+| 🔇 | **Silent Terminal** | Zero console output — everything surfaces inside the GUI |
 
 ---
 
-## 📸 Interface
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                                                         │
-│   BlaXk Grabber                              v2.0      │
-│   YouTube • Spotify • Audiomack → MP3 / MP4             │
-│                                                         │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │ URL or search query                             │    │
-│  │ [Paste link or type search here...            ] │    │
-│  └─────────────────────────────────────────────────┘    │
-│                                                         │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │ Format              Download folder             │    │
-│  │ [🎵 MP3] [🎬 MP4]   [~/Downloads/BlaXk] [📁]   │    │
-│  │                                                 │    │
-│  │ Concurrent downloads                            │    │
-│  │ ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  4    │    │
-│  └─────────────────────────────────────────────────┘    │
-│                                                         │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │              ⬇  GRAB IT                         │    │
-│  └─────────────────────────────────────────────────┘    │
-│                                                         │
-│  Download Queue                                         │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │ #1  Song Title Here          ████████░░  78%    │    │
-│  │ #2  Another Song             ██████████  Done ✓ │    │
-│  │ #3  Already Had This         ██████████  Exists │    │
-│  │ #4  One More Track           ██░░░░░░░░  21%    │    │
-│  └─────────────────────────────────────────────────┘    │
-│                                                         │
-│  Log                                                    │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │ [14:32:01] 📋 Found 12 videos in playlist       │    │
-│  │ [14:32:01] ⏭ Skipping 3 already downloaded      │    │
-│  │ [14:32:05] ✅ Finished: Song Title Here          │    │
-│  └─────────────────────────────────────────────────┘    │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🚀 Installation
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- **Python 3.11+**
-- **ffmpeg** (required for audio conversion and thumbnail embedding)
+- Python **3.11+**
+- `ffmpeg` installed and available on your system `PATH`
 
-#### Install ffmpeg
+> **Install ffmpeg:**
+> - **Ubuntu/Debian:** `sudo apt install ffmpeg`
+> - **macOS:** `brew install ffmpeg`
+> - **Windows:** Download from [ffmpeg.org](https://ffmpeg.org/download.html) and add to PATH
 
-```bash
-# Ubuntu / Debian
-sudo apt install ffmpeg
-
-# Fedora
-sudo dnf install ffmpeg
-
-# Arch
-sudo pacman -S ffmpeg
-
-# macOS
-brew install ffmpeg
-
-# Windows — download from https://ffmpeg.org/download.html and add to PATH
-```
-
-### Install BlaXk Grabber
+### Installation
 
 ```bash
-# Clone the repo
+# 1. Clone the repository
 git clone https://github.com/yourusername/blaxk-grabber.git
 cd blaxk-grabber
 
-# Install (one time — no venv activation needed after this)
-pip install -e .
-```
+# 2. Create a virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate        # Linux / macOS
+venv\Scripts\activate           # Windows
 
-### Add to PATH (if needed)
+# 3. Install dependencies
+pip install -r requirements.txt
 
-If you see `blaxk: command not found` after installing:
-
-```bash
-# Bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
-
-# Zsh
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
-
-# Fish
-fish_add_path ~/.local/bin
+# 4. Launch
+python main.py
 ```
 
 ---
 
-## 🎮 Usage
+## 🎯 Usage
 
-### Launch the GUI
+### Supported Input Types
 
-```bash
-blaxk
-```
-
-Or alternatively:
-
-```bash
-python -m youtube_media_grabber
-```
-
-### 🪄 First run — pick your own launch word
-
-The first time you run BlaXk Grabber, it asks you to pick a **launch word** —
-your own personal command for starting the app from any terminal:
-
-```
-Welcome to BlaXk Grabber! 🎉
-
-Pick a launch word — the command you'll type in any terminal
-to start BlaXk Grabber (e.g. 'grab', 'media').
-```
-
-Type something like `grab` or `media`, confirm, and from then on that word
-launches the app from anywhere (a wrapper is installed in `~/.local/bin`).
-
-- **Skip it** (close the dialog or leave it blank) → the app still works via
-  `blaxk` or `python -m youtube_media_grabber`; you won't be asked again.
-- **Change your word later** → run `python main.py --setup` (or
-  `blaxk --setup`) to pick a new one; the old wrapper is removed automatically.
-- Rules: 2–20 characters, lowercase letters, numbers and dashes; system
-  commands like `ls`, `python` or `git` are rejected for safety.
-
-Your choice is stored in `~/.config/blaxk-grabber/launch_word`. Delete that
-file to get the first-run question again.
-
-### What you can paste
-
-| Input | What happens |
+| Input | Example |
 |---|---|
-| `https://youtube.com/watch?v=...` | Downloads directly |
-| `https://youtube.com/playlist?list=...` | Extracts all videos → concurrent download |
-| `https://open.spotify.com/track/...` | Extracts title + artist → searches YouTube → downloads |
-| `https://audiomack.com/artist/song` | Scrapes metadata → searches YouTube → downloads |
-| `Kendrick Lamar humble` | Searches YouTube → downloads top result |
+| YouTube video URL | `https://youtube.com/watch?v=...` |
+| YouTube playlist URL | `https://youtube.com/playlist?list=...` |
+| Spotify track/album/playlist | `https://open.spotify.com/track/...` |
+| Audiomack track/album/playlist | `https://audiomack.com/...` |
+| Plain search query | `Kendrick Lamar - Not Like Us` |
 
-### Output Structure
+### Step-by-step
 
-```
-~/Downloads/BlaXk_Grabber/
-├── audio/
-│   ├── Song Name.mp3
-│   ├── Another Track.mp3
-│   └── ...
-└── video/
-    ├── Music Video.mp4
-    └── ...
-```
+1. **Paste** a URL or type a search query in the input box
+2. **Choose** your output format — `MP3` or `MP4`
+3. **Set** the concurrency slider (how many files download at once)
+4. **Pick** your output folder
+5. **Hit** `⬇ GRAB IT` — per-file progress bars update in real time
 
----
+### Spotify & Audiomack Flow
 
-## 🏷️ Metadata Pipeline
+BlaXk Grabber does **not** download directly from Spotify or Audiomack. Instead, it:
 
-BlaXk Grabber pulls metadata from multiple sources and merges them. The first non-empty value wins:
-
-```
-Input
-  │
-  ├── Spotify URL ──→ oEmbed API ──→ title, artist
-  ├── Audiomack URL ─→ og:title scrape ──→ title, artist
-  ├── YouTube URL ──→ yt-dlp extract_info ──→ title, artist, album, date, genre
-  └── Search query ─→ yt-dlp search ──→ same as YouTube
-  │
-  ▼
-MusicBrainz API (free, no key needed)
-  └──→ album, release_date, genre, tags
-  │
-  ▼
-Merged Metadata ──→ ID3 tags embedded into MP3
-  ├── title
-  ├── artist
-  ├── album
-  ├── albumartist
-  ├── genre
-  ├── date (year)
-  └── album art (thumbnail)
-```
+1. Extracts track metadata (title, artist, album, artwork) from the link
+2. Searches YouTube for the best match
+3. Downloads from YouTube and embeds the original metadata as ID3 tags
 
 ---
 
 ## ⚙️ Configuration
 
-All configuration is done through the GUI:
+All settings are managed through the GUI. There are no config files to edit manually.
 
-| Setting | Default | Range |
+| Setting | Default | Notes |
 |---|---|---|
-| Format | MP3 Audio | MP3 / MP4 |
-| Output folder | `~/Downloads/BlaXk_Grabber` | Any directory |
-| Concurrent downloads | 4 | 1 – 8 |
+| Output format | `MP3` | Switch to MP4 for video |
+| Audio bitrate | `192 kbps` | Fixed for consistent quality |
+| Concurrent workers | `3` | Adjustable from 1–8 via slider |
+| Output directory | `~/Downloads` | Changeable per session |
+| Auto-retry limit | `2` | Retries happen after the full batch |
 
 ---
 
-## 🔄 How Retry Works
-
-```
-Batch download starts
-  │
-  ├── ✅ Successful downloads → Done ✓
-  ├── ⏭ Duplicates → Exists ✓ (skipped)
-  └── ❌ Failed downloads → collected
-          │
-          ▼
-     Wait 2 seconds
-          │
-     Retry round 1 (up to 2 rounds)
-          │
-          ├── ✅ Now succeeded → Done ✓
-          └── ❌ Still failing
-                  │
-             Retry round 2
-                  │
-                  ├── ✅ Recovered → Done ✓
-                  └── ❌ Permanently failed → listed in log
-```
-
----
-
-## 📦 Project Structure
+## 🏗️ Project Structure
 
 ```
 blaxk-grabber/
-├── pyproject.toml                    # Package config + CLI entry point
-├── main.py                           # Alternative entry point
-├── README.md
-│
-└── youtube_media_grabber/
-    ├── __init__.py                   # Public API exports
-    ├── __main__.py                   # python -m entry point
-    ├── gui.py                        # CustomTkinter glassmorphic GUI
-    ├── downloader.py                 # yt-dlp download + ID3 tagging
-    ├── meta.py                       # Metadata extraction + MusicBrainz
-    └── searcher.py                   # YouTube search + playlist extraction
+├── main.py              # Entry point — launches the GUI
+├── gui/
+│   ├── app.py           # Main window and layout
+│   ├── components.py    # Progress bars, buttons, input fields
+│   └── theme.py         # Glassmorphic dark red/black theme
+├── core/
+│   ├── downloader.py    # yt-dlp wrapper, concurrent queue
+│   ├── metadata.py      # MusicBrainz + yt-dlp ID3 tag injection
+│   ├── resolver.py      # Spotify / Audiomack → YouTube lookup
+│   └── search.py        # Plain-text YouTube search
+├── utils/
+│   ├── dedup.py         # Duplicate file detection
+│   └── retry.py         # Auto-retry logic
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
-## 🛠️ Dependencies
+## 📦 Dependencies
 
 | Package | Purpose |
 |---|---|
-| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | YouTube downloading & searching |
-| [customtkinter](https://github.com/TomSchimansky/CustomTkinter) | Modern dark GUI |
-| [mutagen](https://github.com/quodlibet/mutagen) | MP3 ID3 tag writing |
-| [Pillow](https://python-pillow.org/) | Image handling for customtkinter |
-| [requests](https://requests.readthedocs.io/) | HTTP calls (Spotify oEmbed, MusicBrainz) |
-| [beautifulsoup4](https://www.crummy.com/software/BeautifulSoup/) | HTML scraping for metadata |
-| [rich](https://github.com/Textualize/rich) | *(included but unused in GUI mode)* |
-| **ffmpeg** (external) | Audio extraction, video merging, thumbnails |
+| [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) | YouTube downloading engine |
+| [`spotipy`](https://github.com/spotipy-dev/spotipy) | Spotify metadata extraction |
+| [`musicbrainzngs`](https://github.com/alastair/python-musicbrainzngs) | MusicBrainz metadata lookup |
+| [`mutagen`](https://github.com/quodlibet/mutagen) | ID3 tag writing |
+| `tkinter` / `customtkinter` | GUI framework |
+| `concurrent.futures` | Concurrent download threading |
+
+Install all at once:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+**`ffmpeg` not found**
+→ Make sure ffmpeg is installed and on your system `PATH`. Verify with `ffmpeg -version`.
+
+**Spotify link not resolving**
+→ Spotify metadata lookup requires a valid Spotify Developer API key. Set `SPOTIPY_CLIENT_ID` and `SPOTIPY_CLIENT_SECRET` as environment variables or in a `.env` file.
+
+**Download stuck / no progress**
+→ Check your internet connection. The auto-retry mechanism will kick in for failed items after the rest of the batch completes.
+
+**Duplicate files being skipped unexpectedly**
+→ BlaXk checks filenames in the output folder before downloading. Rename or move the existing file if you want a fresh download.
 
 ---
 
 ## 🤝 Contributing
 
-1. Fork the repo
-2. Create a branch (`git checkout -b feature/something`)
-3. Commit your changes (`git commit -m 'Add something'`)
-4. Push (`git push origin feature/something`)
-5. Open a Pull Request
+Pull requests are welcome. For major changes, open an issue first to discuss what you'd like to change.
+
+```bash
+# Fork → clone → branch
+git checkout -b feature/your-feature-name
+
+# Make changes, then
+git commit -m "feat: describe your change"
+git push origin feature/your-feature-name
+# Open a PR
+```
+
+Please make sure your code runs without errors before submitting.
 
 ---
 
 ## 📄 License
 
-MIT License — do whatever you want with it.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ---
 
 <div align="center">
 
-**Built with Love for OPEN SOURCE by BlaXk**
-
-*If it plays, we grab it.*
+Built by [BlaXk](https://github.com/yourusername) · Powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 
 </div>
-```
