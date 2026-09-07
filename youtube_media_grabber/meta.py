@@ -6,6 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 
 YOUTUBE_DOMAINS = ("youtube.com", "youtu.be")
+X_DOMAINS = ("x.com", "twitter.com", "t.co")
 SUPPORTED_PLATFORMS = {
     "spotify.com": "Spotify",
     "audiomack.com": "Audiomack",
@@ -47,9 +48,25 @@ def is_youtube_url(url: str) -> bool:
     return any(domain in hostname for domain in YOUTUBE_DOMAINS)
 
 
+def is_x_url(url: str) -> bool:
+    if not is_url(url):
+        return False
+    parsed = urlparse(url)
+    hostname = (parsed.hostname or "").lower()
+    return any(domain in hostname for domain in X_DOMAINS)
+
+
+def is_direct_download_url(url: str) -> bool:
+    """True for platforms yt-dlp downloads directly (YouTube, X).
+    Everything else goes through metadata extraction + YouTube search."""
+    return is_youtube_url(url) or is_x_url(url)
+
+
 def get_platform_name(url: str) -> str:
     if is_youtube_url(url):
         return "YouTube"
+    if is_x_url(url):
+        return "X"
     for domain, platform in SUPPORTED_PLATFORMS.items():
         if domain in url.lower():
             return platform
@@ -223,6 +240,10 @@ def extract_metadata(source: str) -> Metadata:
 
     if source_platform == "YouTube":
         return Metadata(source_url=source, source_platform="YouTube", query=source)
+
+    if source_platform == "X":
+        # yt-dlp handles X links directly — no scraping, no MusicBrainz.
+        return Metadata(source_url=source, source_platform="X", query=source)
 
     if source_platform == "Spotify":
         metadata = parse_spotify_oembed(source)

@@ -23,7 +23,7 @@
 
 **Paste a link. Pick a format. Hit GRAB IT.**
 
-YouTube • Spotify • Audiomack → MP3 / MP4
+YouTube • X • Spotify • Audiomack → MP3 / MP4
 
 ---
 
@@ -33,7 +33,8 @@ YouTube • Spotify • Audiomack → MP3 / MP4
 
 | Feature | Description |
 |---|---|
-| 🎵 **Audio & Video** | Download as MP3 (192kbps) or MP4 (best quality) |
+| 🎵 **Audio & Video** | Download as MP3 (192kbps) or MP4 — pick Best, 1080p, 720p, 480p or 360p |
+| 🐦 **X (Twitter) Downloads** | Paste an X link — videos download directly, no re-searching |
 | 📋 **Playlist Support** | Grab entire YouTube playlists in one click |
 | ⚡ **Concurrent Downloads** | Download 1–8 files simultaneously (configurable slider) |
 | 🔍 **Smart Search** | Type a song name — BlaXk finds it on YouTube automatically |
@@ -53,7 +54,7 @@ YouTube • Spotify • Audiomack → MP3 / MP4
 ┌─────────────────────────────────────────────────────────┐
 │                                                         │
 │   BlaXk Grabber                              v2.0      │
-│   YouTube • Spotify • Audiomack → MP3 / MP4             │
+│   YouTube • X • Spotify • Audiomack → MP3 / MP4             │
 │                                                         │
 │  ┌─────────────────────────────────────────────────┐    │
 │  │ URL or search query                             │    │

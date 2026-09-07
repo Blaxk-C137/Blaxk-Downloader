@@ -36,6 +36,20 @@ def find_ffmpeg() -> Optional[str]:
     return None
 
 
+def build_video_format(quality: str = "best") -> str:
+    """Map a quality choice to a yt-dlp format string.
+
+    "best" keeps the historical default; a height like "720" caps the
+    video resolution. Unknown values fall back to best.
+    """
+    if quality and quality.isdigit():
+        return (
+            f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]"
+            f"/best[height<={quality}]/best"
+        )
+    return "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/mp4"
+
+
 def get_expected_output_path(
     url: str,
     format_choice: str,
@@ -143,6 +157,7 @@ def download_single(
     ffmpeg_path: str | None = None,
     metadata: Metadata | None = None,
     progress_callback: callable | None = None,
+    quality: str = "best",
 ) -> str:
     """Download a single video/audio. Returns the final filepath."""
     output_dir = resolve_base_output_dir(base_output_dir)
@@ -201,7 +216,7 @@ def download_single(
         })
     else:
         ydl_opts.update({
-            "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/mp4",
+            "format": build_video_format(quality),
             "merge_output_format": "mp4",
             "postprocessors": [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}],
         })

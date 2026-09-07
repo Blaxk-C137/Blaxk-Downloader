@@ -7,7 +7,7 @@ from tkinter import filedialog, messagebox, TclError
 
 import customtkinter as ctk
 
-from .meta import extract_metadata, build_search_query, is_youtube_url, Metadata
+from .meta import extract_metadata, build_search_query, is_youtube_url, is_direct_download_url, Metadata
 from .searcher import search_youtube, extract_playlist_urls
 from .downloader import (
     download_single, find_ffmpeg, resolve_base_output_dir,
@@ -33,6 +33,15 @@ FONT_FAMILY = "Segoe UI"
 
 MAX_CONCURRENT = 4
 MAX_RETRIES = 2
+
+# Display label → height cap passed to the downloader ("best" = no cap)
+QUALITY_CHOICES = {
+    "Best": "best",
+    "1080p": "1080",
+    "720p": "720",
+    "480p": "480",
+    "360p": "360",
+}
 
 
 class GlassCard(ctk.CTkFrame):
@@ -142,7 +151,7 @@ class BlaXkGrabber(ctk.CTk):
         ).pack(side="left", padx=(12, 0), pady=(20, 0))
 
         ctk.CTkLabel(
-            self, text="YouTube • Spotify • Audiomack → MP3 / MP4",
+            self, text="YouTube • X • Spotify • Audiomack → MP3 / MP4",
             font=(FONT_FAMILY, 13), text_color=GRAY,
         ).pack(anchor="w", padx=34, pady=(2, 16))
 
@@ -158,7 +167,7 @@ class BlaXkGrabber(ctk.CTk):
 
         self.input_entry = ctk.CTkEntry(
             input_card,
-            placeholder_text="Paste YouTube / Spotify / Audiomack link, or type a search...",
+            placeholder_text="Paste YouTube / X / Spotify / Audiomack link, or type a search...",
             font=(FONT_FAMILY, 13), height=44, corner_radius=10,
             fg_color=BG_INPUT, border_color="#333333", border_width=1, text_color=WHITE,
         )
@@ -193,6 +202,18 @@ class BlaXkGrabber(ctk.CTk):
             command=lambda: self._set_format("video"),
         )
         self.video_btn.pack(side="left")
+
+        # Quality picker (video only — greyed out for audio)
+        self.quality_var = ctk.StringVar(value="Best")
+        self.quality_menu = ctk.CTkOptionMenu(
+            format_frame, variable=self.quality_var,
+            values=list(QUALITY_CHOICES),
+            font=(FONT_FAMILY, 12), width=96, height=38, corner_radius=10,
+            fg_color=BG_INPUT, button_color="#333333",
+            button_hover_color="#444444", text_color=WHITE,
+            dropdown_font=(FONT_FAMILY, 12), state="disabled",
+        )
+        self.quality_menu.pack(side="left", padx=(16, 0))
 
         ctk.CTkLabel(
             options_card, text="Download folder",
@@ -374,9 +395,11 @@ class BlaXkGrabber(ctk.CTk):
         if choice == "audio":
             self.audio_btn.configure(fg_color=RED, hover_color=RED_DARK)
             self.video_btn.configure(fg_color="#333333", hover_color="#444444")
+            self.quality_menu.configure(state="disabled")
         else:
             self.video_btn.configure(fg_color=RED, hover_color=RED_DARK)
             self.audio_btn.configure(fg_color="#333333", hover_color="#444444")
+            self.quality_menu.configure(state="normal")
 
     def _on_slider_change(self, value: float) -> None:
         v = int(value)
@@ -487,18 +510,20 @@ class BlaXkGrabber(ctk.CTk):
         try:
             metadata = extract_metadata(source)
             fmt = self.format_var.get()
+            quality = QUALITY_CHOICES.get(self.quality_var.get(), "best")
             out_dir = self.output_entry.get().strip()
             max_workers = self.concurrent_var.get()
 
-            if is_youtube_url(source):
-                if "list=" in source.lower():
+            if is_direct_download_url(source):
+                # YouTube playlists expand into a batch; X has no playlists.
+                if is_youtube_url(source) and "list=" in source.lower():
                     self._schedule(self._log, "🔍 Extracting playlist...")
                     self._schedule(self._set_status, "Extracting playlist...")
                     entries = extract_playlist_urls(source)
                     if not entries:
                         raise ValueError("Could not extract any videos from this playlist.")
                     self._schedule(self._log, f"📋 Found {len(entries)} videos in playlist")
-                    self._download_batch(entries, fmt, out_dir, metadata, max_workers)
+                    self._download_batch(entries, fmt, quality, out_dir, metadata, max_workers)
                     return
                 else:
                     # Fetch the actual title from yt-dlp instead of showing the raw URL
@@ -528,7 +553,7 @@ class BlaXkGrabber(ctk.CTk):
                 self._schedule(self._log, f"✅ Found: {video['title']}")
                 entries = [video]
 
-            self._download_batch(entries, fmt, out_dir, metadata, max_workers)
+            self._download_batch(entries, fmt, quality, out_dir, metadata, max_workers)
 
         except Exception as exc:
             self._schedule(self._log, f"❌ Error: {exc}")
@@ -541,6 +566,7 @@ class BlaXkGrabber(ctk.CTk):
         self,
         entries: list[dict],
         fmt: str,
+        quality: str,
         out_dir: str,
         base_metadata: Metadata,
         max_workers: int,
@@ -621,7 +647,7 @@ class BlaXkGrabber(ctk.CTk):
                 download_single(
                     url=url, format_choice=fmt, base_output_dir=out_dir,
                     ffmpeg_path=self.ffmpeg_path, metadata=base_metadata,
-                    progress_callback=progress_hook,
+                    progress_callback=progress_hook, quality=quality,
                 )
                 self._schedule(row.update_progress, 1.0, "Done ✓", GREEN)
                 self._schedule(self._log, f"✅ Finished: {title}")
