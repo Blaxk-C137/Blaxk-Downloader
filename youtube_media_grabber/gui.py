@@ -120,6 +120,9 @@ class BlaXkGrabber(ctk.CTk):
         self.download_rows: list[DownloadRow] = []
         self.is_downloading = False
         self._destroyed = False
+        # Set to True by a batch that finished with zero failures; used by
+        # _finish_download to decide whether to clear the input box.
+        self._batch_ok = False
 
         # Route the window's X button through our destroy() so pending
         # after-timers get cancelled even on a WM-initiated close.
@@ -172,6 +175,8 @@ class BlaXkGrabber(ctk.CTk):
             fg_color=BG_INPUT, border_color="#333333", border_width=1, text_color=WHITE,
         )
         self.input_entry.grid(row=1, column=0, columnspan=2, sticky="ew", padx=20, pady=(6, 16))
+        # Enter in the input box starts the download, same as GRAB IT
+        self.input_entry.bind("<Return>", lambda _event: self._on_download())
 
         # Options card
         options_card = GlassCard(self)
@@ -501,6 +506,7 @@ class BlaXkGrabber(ctk.CTk):
             return
 
         self.is_downloading = True
+        self._batch_ok = False
         self.download_btn.configure(state="disabled", text="⏳  Grabbing...")
         self._clear_queue_ui()
 
@@ -613,6 +619,7 @@ class BlaXkGrabber(ctk.CTk):
         if not to_download:
             self._schedule(self._log, "🎉 All files already exist — nothing to download!")
             self._schedule(self._set_status, f"All {total_all} files already exist")
+            self._batch_ok = True
             return
 
         # Build the downloadable subset
@@ -717,6 +724,7 @@ class BlaXkGrabber(ctk.CTk):
         # ── Summary ──
         final_failed = len(failed_entries)
         if final_failed == 0:
+            self._batch_ok = True
             summary = f"🎉 Done! {completed} downloaded, {skipped} already existed"
             self._schedule(self._log, summary)
         else:
@@ -732,6 +740,11 @@ class BlaXkGrabber(ctk.CTk):
             return
         self.is_downloading = False
         self.download_btn.configure(state="normal", text="⬇  GRAB IT")
+        # Clear the input only when the whole batch succeeded — on failure
+        # the link stays so the user can retry it.
+        if self._batch_ok:
+            self.input_entry.delete(0, "end")
+        self._batch_ok = False
 
 
 def main() -> None:
