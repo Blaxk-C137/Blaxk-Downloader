@@ -66,10 +66,51 @@ class TestInstallLaunchWord:
         assert path.exists()
         assert path.stat().st_mode & stat.S_IXUSR
         content = path.read_text()
-        # Wrapper must exec an interpreter against this project's main.py
+        # Wrapper must exec an interpreter against a main.py it resolves
         assert content.startswith("#!/bin/sh")
         assert "main.py" in content
         assert "exec" in content
+
+    def test_wrapper_is_location_independent(self, config_dir, bin_dir):
+        """The wrapper must not bake in the project's absolute path —
+        that breaks the launch word whenever the project dir is renamed."""
+        launcher.install_launch_word("grab", config_dir, bin_dir)
+        content = (bin_dir / "grab").read_text()
+        assert "blaxk_d" not in content
+        assert str(Path.home()) not in content
+
+    def test_wrapper_uses_project_path_record(self, config_dir, bin_dir):
+        """Fast path: the wrapper resolves the project through the
+        recorded project_path file, not a hardcoded location."""
+        launcher.install_launch_word("grab", config_dir, bin_dir)
+        content = (bin_dir / "grab").read_text()
+        assert "project_path" in content
+        assert ".config/blaxk-grabber" in content
+
+    def test_wrapper_has_fallback_search(self, config_dir, bin_dir):
+        """Slow path: if the recorded path is stale, the wrapper searches
+        for the checkout instead of failing."""
+        launcher.install_launch_word("grab", config_dir, bin_dir)
+        content = (bin_dir / "grab").read_text()
+        assert "find" in content
+        assert "pyproject.toml" in content
+
+    def test_records_current_project_path(self, config_dir, bin_dir):
+        """The install records where the project lives now, so the
+        wrapper's fast path points at a real directory."""
+        launcher.install_launch_word("grab", config_dir, bin_dir)
+        recorded = (config_dir / "project_path").read_text().strip()
+        project_root = Path(launcher.__file__).resolve().parent.parent
+        assert Path(recorded).resolve() == project_root
+
+    def test_refresh_updates_project_path(self, config_dir):
+        """Launching from a moved checkout updates the record so the
+        fast path heals after a directory rename."""
+        config_dir.joinpath("project_path").write_text("/gone/nowhere\n")
+        launcher.record_project_path(config_dir)
+        recorded = (config_dir / "project_path").read_text().strip()
+        project_root = Path(launcher.__file__).resolve().parent.parent
+        assert Path(recorded).resolve() == project_root
 
     def test_writes_marker_file(self, config_dir, bin_dir):
         launcher.install_launch_word("grab", config_dir, bin_dir)
