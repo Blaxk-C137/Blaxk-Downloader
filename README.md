@@ -38,7 +38,8 @@ YouTube • X • Spotify • Audiomack → MP3 / MP4
 | 📋 **Playlist Support** | Grab entire YouTube playlists in one click |
 | ⚡ **Concurrent Downloads** | Download 1–8 files simultaneously (configurable slider) |
 | 🔍 **Smart Search** | Type a song name — BlaXk finds it on YouTube automatically |
-| 🎧 **Spotify → YouTube** | Paste a Spotify link — metadata is extracted and the song is found on YouTube |
+| 🎧 **Spotify → YouTube** | Paste a Spotify track link — metadata is extracted and the song is found on YouTube |
+| 📀 **Spotify Playlists** | Paste a playlist link — every track is listed, searched and grabbed individually (public playlists) |
 | 🔊 **Audiomack → YouTube** | Same for Audiomack links |
 | 🏷️ **Full Metadata** | ID3 tags: title, artist, album, genre, date, album art (via MusicBrainz + yt-dlp) |
 | 📂 **Duplicate Detection** | Scans your folder before downloading — skips files that already exist |
@@ -192,6 +193,7 @@ file to get the first-run question again.
 | `https://youtube.com/watch?v=...` | Downloads directly |
 | `https://youtube.com/playlist?list=...` | Extracts all videos → concurrent download |
 | `https://open.spotify.com/track/...` | Extracts title + artist → searches YouTube → downloads |
+| `https://open.spotify.com/playlist/...` | Reads every track in the playlist → concurrent per-track YouTube search + download |
 | `https://audiomack.com/artist/song` | Scrapes metadata → searches YouTube → downloads |
 | `Kendrick Lamar humble` | Searches YouTube → downloads top result |
 
@@ -217,7 +219,8 @@ BlaXk Grabber pulls metadata from multiple sources and merges them. The first no
 ```
 Input
   │
-  ├── Spotify URL ──→ oEmbed API ──→ title, artist
+  ├── Spotify track URL ─→ oEmbed API ──→ title, artist
+  ├── Spotify playlist URL ─→ embed page track list ──→ per-track title, artist
   ├── Audiomack URL ─→ og:title scrape ──→ title, artist
   ├── YouTube URL ──→ yt-dlp extract_info ──→ title, artist, album, date, genre
   └── Search query ─→ yt-dlp search ──→ same as YouTube
@@ -290,7 +293,8 @@ blaxk-grabber/
     ├── gui.py                        # CustomTkinter glassmorphic GUI
     ├── downloader.py                 # yt-dlp download + ID3 tagging
     ├── meta.py                       # Metadata extraction + MusicBrainz
-    └── searcher.py                   # YouTube search + playlist extraction
+    ├── searcher.py                   # YouTube search + playlist extraction
+    └── spotify.py                    # Spotify playlist track listing (embed page)
 ```
 
 ---

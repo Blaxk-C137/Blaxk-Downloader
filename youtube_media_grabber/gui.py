@@ -9,6 +9,7 @@ import customtkinter as ctk
 
 from .meta import extract_metadata, build_search_query, is_youtube_url, is_direct_download_url, Metadata
 from .searcher import search_youtube, extract_playlist_urls
+from .spotify import extract_spotify_playlist_tracks, is_spotify_playlist_url
 from .downloader import (
     download_single, find_ffmpeg, resolve_base_output_dir,
     scan_existing_files, check_already_exists,
@@ -550,6 +551,17 @@ class BlaXkGrabber(ctk.CTk):
                     self._schedule(self._log, f"✅ Found: {title}")
                     entries = [{"title": title, "link": source}]
             else:
+                # Spotify playlists expand into a batch of per-track searches.
+                # (oEmbed only returns the playlist name, so the generic
+                # search path below would download one random video.)
+                if is_spotify_playlist_url(source):
+                    self._schedule(self._log, "🔍 Reading Spotify playlist...")
+                    self._schedule(self._set_status, "Reading Spotify playlist...")
+                    entries = extract_spotify_playlist_tracks(source)
+                    self._schedule(self._log, f"🎧 Found {len(entries)} tracks in playlist")
+                    self._download_batch(entries, fmt, quality, out_dir, metadata, max_workers)
+                    return
+
                 query = build_search_query(metadata)
                 if not query:
                     raise ValueError("Unable to build a search query from the provided input.")
@@ -567,6 +579,37 @@ class BlaXkGrabber(ctk.CTk):
             self._schedule(self._show_error, "BlaXk Grabber", str(exc))
         finally:
             self._schedule(self._finish_download)
+
+    def _resolve_download_target(self, entry: dict) -> str:
+        """Return a downloadable URL for an entry.
+
+        Direct entries (YouTube/X) already carry a link; Spotify playlist
+        tracks carry only a search query, resolved to YouTube here. The
+        resolved link is cached on the entry so retries skip the search.
+        """
+        url = entry.get("link")
+        if url:
+            return url
+        query = entry.get("query")
+        if not query:
+            raise ValueError("Entry has no download link or search query.")
+        video = search_youtube(query)
+        entry["link"] = video["link"]
+        return video["link"]
+
+    @staticmethod
+    def _entry_metadata(entry: dict, base_metadata: Metadata) -> Metadata:
+        """Per-track metadata for entries that know their own track/artist
+        (Spotify playlist tracks) so each file gets correct ID3 tags; other
+        entries share the batch's base metadata."""
+        if entry.get("track"):
+            return Metadata(
+                title=entry["track"],
+                artist=entry.get("artist") or "",
+                source_url=entry.get("link") or "",
+                source_platform="Spotify",
+            )
+        return base_metadata
 
     def _download_batch(
         self,
@@ -634,10 +677,22 @@ class BlaXkGrabber(ctk.CTk):
         self._schedule(self._set_status, f"Downloading 0/{total_to_dl} (skipped {skipped})...")
 
         def do_download(index: int, entry: dict, row: DownloadRow) -> str:
-            url = entry["link"]
             title = entry.get("title") or "Unknown"
             self._schedule(row.update_progress, 0.0, "Downloading...", RED)
             self._schedule(self._log, f"⬇ Starting: {title}")
+
+            # Spotify playlist tracks carry a search query instead of a
+            # direct link — resolve inside the worker so searches run in
+            # parallel with the other downloads and get retried on failure.
+            try:
+                url = self._resolve_download_target(entry)
+            except Exception as e:
+                self._schedule(row.update_progress, 0.0, "Failed ✗", RED)
+                self._schedule(self._log, f"❌ Failed: {title} — {e}")
+                return "fail"
+            self._schedule(row.update_progress, 0.0, "Downloading...", RED)
+
+            metadata = self._entry_metadata(entry, base_metadata)
 
             def progress_hook(d: dict):
                 status = d.get("status")
@@ -653,7 +708,7 @@ class BlaXkGrabber(ctk.CTk):
             try:
                 download_single(
                     url=url, format_choice=fmt, base_output_dir=out_dir,
-                    ffmpeg_path=self.ffmpeg_path, metadata=base_metadata,
+                    ffmpeg_path=self.ffmpeg_path, metadata=metadata,
                     progress_callback=progress_hook, quality=quality,
                 )
                 self._schedule(row.update_progress, 1.0, "Done ✓", GREEN)
